@@ -2,7 +2,7 @@ package business
 
 import "gorm.io/gorm"
 
-type Product struct {
+type Products struct {
 	ID          int
 	Title       string
 	Author      string
@@ -11,7 +11,7 @@ type Product struct {
 	Description string
 }
 
-type User struct {
+type Users struct {
 	ID        int
 	Email     string `json:"-"`
 	Password  string `json:"-"`
@@ -22,7 +22,7 @@ type User struct {
 type User_details struct {
 	ID          int
 	UserID      int
-	User        User
+	User        Users
 	Street      string
 	Number      int
 	City        string
@@ -30,24 +30,24 @@ type User_details struct {
 	Province    string
 }
 
-type Order struct {
+type Orders struct {
 	ID     int
 	UserID int
-	User   User
+	User   Users
 	Total  int
 }
 
-type Order_detail struct {
+type Order_details struct {
 	ID        int
 	OrderID   int
-	Order     Order
+	Order     Orders
 	ProductID int
-	Product   Product
+	Product   Products
 	Quantity  int
 }
 
-type Payment struct {
+type Payments struct {
 	gorm.Model
 	OrderID int
-	Order   Order
+	Order   Orders
 }
