@@ -186,3 +186,20 @@ func (h *Handlers) GetBooksByCategoryHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, book)
 }
+
+func (h *Handlers) GetBooksByAuthorHandler(c *gin.Context) {
+	author := c.Param("author")
+	var book []business.Products
+
+	db := platform.DbConnection()
+	result := db.Where("author = ?", author).Order("title ASC")
+
+	if result.Error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "There is not book for the Author",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, book)
+}
