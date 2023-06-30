@@ -203,3 +203,26 @@ func (h *Handlers) GetBooksByAuthorHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, book)
 }
+
+func (h *Handlers) AddNewBookHandler(c *gin.Context) {
+	var book business.Products
+
+	if err := c.ShouldBindJSON(&book); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	db := platform.DbConnection()
+	result := db.Create(&book)
+
+	if result.Error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Something went wrong",
+		})
+		return
+	}
+
+	c.JSON(http.StatusCreated, book)
+}
