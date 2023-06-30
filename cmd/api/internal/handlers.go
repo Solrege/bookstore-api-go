@@ -5,6 +5,7 @@ import (
 	"bookstore-api/internal/platform"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -124,4 +125,64 @@ func (h *Handlers) LoginHandler(c *gin.Context) {
 	fmt.Println(GenerateToken(user.ID))
 
 	c.JSON(http.StatusOK, input)
+}
+
+func (h *Handlers) GetBookByIDHandler(c *gin.Context) {
+	ID := c.Param("ID")
+
+	var book []business.Products
+
+	db := platform.DbConnection()
+
+	result := db.Where("ID = ?", ID).Find(&book)
+
+	if result.Error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Something went wrong with the ID",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, book)
+}
+
+func (h *Handlers) GetBooksByCategoryHandler(c *gin.Context) {
+	category := c.Param("category")
+	sortBy := c.Query("sort")
+	pageStr := c.DefaultQuery("page", "1")
+	limitStr := c.DefaultQuery("limit", "20")
+	var book []business.Products
+
+	db := platform.DbConnection()
+	result := db.Where("category = ?", category)
+
+	//sort by author o title
+	if sortBy == "author" {
+		result = result.Order("author ASC")
+	} else if sortBy == "title" {
+		result = result.Order("title ASC")
+	}
+
+	//pagination
+	page, err := strconv.Atoi(pageStr)
+	if err != nil {
+		panic(err)
+	}
+
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil {
+		panic(err)
+	}
+
+	offset := (page - 1) * limit
+	result = result.Offset(offset).Limit(limit)
+
+	if result.Error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Something went wrong",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, book)
 }
