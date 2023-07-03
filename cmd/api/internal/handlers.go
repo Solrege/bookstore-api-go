@@ -130,7 +130,7 @@ func (h *Handlers) LoginHandler(c *gin.Context) {
 func (h *Handlers) GetBookByIDHandler(c *gin.Context) {
 	ID := c.Param("ID")
 
-	var book []business.Products
+	var book business.Products
 
 	db := platform.DbConnection()
 
@@ -151,10 +151,10 @@ func (h *Handlers) GetBooksByCategoryHandler(c *gin.Context) {
 	sortBy := c.Query("sort")
 	pageStr := c.DefaultQuery("page", "1")
 	limitStr := c.DefaultQuery("limit", "20")
-	var book []business.Products
+	book := []business.Products{}
 
 	db := platform.DbConnection()
-	result := db.Where("category = ?", category)
+	result := db.Where("category = ?", category).Find(&book)
 
 	//sort by author o title
 	if sortBy == "author" {
@@ -189,10 +189,10 @@ func (h *Handlers) GetBooksByCategoryHandler(c *gin.Context) {
 
 func (h *Handlers) GetBooksByAuthorHandler(c *gin.Context) {
 	author := c.Param("author")
-	var book []business.Products
+	book := []business.Products{}
 
 	db := platform.DbConnection()
-	result := db.Where("author = ?", author).Order("title ASC")
+	result := db.Where("author = ?", author).Order("title ASC").Find(&book)
 
 	if result.Error != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -205,7 +205,7 @@ func (h *Handlers) GetBooksByAuthorHandler(c *gin.Context) {
 }
 
 func (h *Handlers) AddNewBookHandler(c *gin.Context) {
-	var book business.Products
+	var book business.Product_details
 
 	if err := c.ShouldBindJSON(&book); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{

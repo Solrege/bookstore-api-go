@@ -3,12 +3,23 @@ package business
 import "gorm.io/gorm"
 
 type Products struct {
+	ID       int
+	Title    string
+	Author   string
+	Category string
+	Price    float64
+}
+
+type Product_details struct {
 	ID          int
-	Title       string
-	Author      string
-	Category    string
-	Price       float64
+	ProductID   int
+	Product     Products
 	Description string
+	Idioma      string
+	Tapa        string
+	Editorial   string
+	Año         int
+	Páginas     int
 }
 
 type Users struct {

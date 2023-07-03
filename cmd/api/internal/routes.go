@@ -8,15 +8,14 @@ func InitRoutes(r *gin.Engine) {
 	//rutas públicas
 
 	r.GET("/", h.Index)
-	r.POST("/register", h.RegisterHandler)
-	r.POST("/login", h.LoginHandler)
+	r.POST("/register", h.RegisterHandler) // falta
+	r.POST("/login", h.LoginHandler)       // falta
 
 	g := r.Group("/books")
-
 	{
-		g.GET("/:id", h.GetBookByIDHandler)
-		g.GET("/:category", h.GetBooksByCategoryHandler)
-		g.GET("/:author", h.GetBooksByAuthorHandler)
+		g.GET("/:ID", h.GetBookByIDHandler)
+		g.GET("/category/:category", h.GetBooksByCategoryHandler)
+		g.GET("/author/:author", h.GetBooksByAuthorHandler)
 	}
 
 	// rutas privadas
