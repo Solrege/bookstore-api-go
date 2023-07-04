@@ -5,7 +5,9 @@ import (
 	"bookstore-api/internal/platform"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -330,12 +332,29 @@ func (h *Handlers) UpdateBookHandler(c *gin.Context) {
 }
 
 func (h *Handlers) SearchBookHandler(c *gin.Context) {
-	query := c.Query("query")
+	originalQuery := c.Query("query")
+
+	//quitar espacios
+	query := strings.TrimSpace(originalQuery)
+
+	// longitud
+	q := len(query)
+	if q == 0 || q > 50 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid query",
+		})
+	}
+
+	// evitar caract especiales
+	reg := regexp.MustCompile("[^a-zA-Z0-9 ]+")
+
+	cleanQuery := reg.ReplaceAllString(query, "")
+
 	var book []business.Product
 
 	db := platform.DbConnection()
 
-	result := db.Where("title LIKE ? OR author LIKE ?", "%"+query+"%", "%"+query+"%").Find(&book)
+	result := db.Where("title LIKE ? OR author LIKE ?", "%"+cleanQuery+"%", "%"+cleanQuery+"%").Find(&book)
 	if result.Error != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Book or Author not found",
