@@ -69,7 +69,7 @@ func (h *Handlers) RegisterHandler(c *gin.Context) {
 		})
 	}
 
-	mUser := business.Users{
+	mUser := business.User{
 		Email:     user.Email,
 		Password:  user.Password,
 		Name:      user.Name,
@@ -93,7 +93,7 @@ func verifyPassword(hashPassword, password string) error {
 
 func (h *Handlers) LoginHandler(c *gin.Context) {
 	var input loginRequest
-	var user business.Users
+	var user business.User
 
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -130,7 +130,7 @@ func (h *Handlers) LoginHandler(c *gin.Context) {
 func (h *Handlers) GetBookByIDHandler(c *gin.Context) {
 	ID := c.Param("ID")
 
-	var book business.Products
+	var book business.Product
 
 	db := platform.DbConnection()
 
@@ -151,7 +151,7 @@ func (h *Handlers) GetBooksByCategoryHandler(c *gin.Context) {
 	sortBy := c.Query("sort")
 	pageStr := c.DefaultQuery("page", "1")
 	limitStr := c.DefaultQuery("limit", "20")
-	book := []business.Products{}
+	book := []business.Product{}
 
 	db := platform.DbConnection()
 	result := db.Where("category = ?", category).Find(&book)
@@ -189,7 +189,7 @@ func (h *Handlers) GetBooksByCategoryHandler(c *gin.Context) {
 
 func (h *Handlers) GetBooksByAuthorHandler(c *gin.Context) {
 	author := c.Param("author")
-	book := []business.Products{}
+	book := []business.Product{}
 
 	db := platform.DbConnection()
 	result := db.Where("author = ?", author).Order("title ASC").Find(&book)
@@ -205,7 +205,7 @@ func (h *Handlers) GetBooksByAuthorHandler(c *gin.Context) {
 }
 
 func (h *Handlers) AddNewBookHandler(c *gin.Context) {
-	var book business.Product_details
+	var book business.Product
 
 	if err := c.ShouldBindJSON(&book); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -219,10 +219,62 @@ func (h *Handlers) AddNewBookHandler(c *gin.Context) {
 
 	if result.Error != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Something went wrong",
+			"error": "Book not created",
 		})
 		return
 	}
 
 	c.JSON(http.StatusCreated, book)
+}
+
+func (h *Handlers) DeleteBookHandler(c *gin.Context) {
+	ID := c.Param("ID")
+	var book business.Product
+
+	db := platform.DbConnection()
+	delete := db.Where("ID = ?", ID).Delete(&book)
+
+	if delete.Error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Book not deleted",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, book)
+}
+
+func (h *Handlers) UpdateBookHandler(c *gin.Context) {
+	ID := c.Param("ID")
+	var book business.Product
+
+	db := platform.DbConnection()
+
+	// primero se busca el libro
+	result := db.Find(&book, ID)
+	if result.Error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Book not found",
+		})
+		return
+	}
+
+	// se bindea
+	if err := c.ShouldBindJSON(&book); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	// se actualiza
+	update := db.Model(&book).Updates(book)
+
+	if update.Error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Book not updated",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, book)
 }

@@ -23,5 +23,8 @@ func InitRoutes(r *gin.Engine) {
 	a := r.Group("/admin")
 	{
 		a.POST("/books", h.AddNewBookHandler)
+		a.DELETE("/books/:ID", h.DeleteBookHandler)
+		a.PATCH("/books/:ID", h.UpdateBookHandler)
+
 	}
 }

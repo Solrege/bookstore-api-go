@@ -2,27 +2,21 @@ package business
 
 import "gorm.io/gorm"
 
-type Products struct {
-	ID       int
-	Title    string
-	Author   string
-	Category string
-	Price    float64
-}
-
-type Product_details struct {
+type Product struct {
 	ID          int
-	ProductID   int
-	Product     Products
+	Title       string
+	Author      string
+	Category    string
+	Price       float64
 	Description string
-	Idioma      string
-	Tapa        string
+	Language    string
+	Cover       string
 	Editorial   string
-	Año         int
-	Páginas     int
+	Year        int
+	Pages       int
 }
 
-type Users struct {
+type User struct {
 	ID        int
 	Email     string `json:"-"`
 	Password  string `json:"-"`
@@ -30,10 +24,10 @@ type Users struct {
 	Last_name string
 }
 
-type User_details struct {
+type User_address struct {
 	ID          int
 	UserID      int
-	User        Users
+	User        User
 	Street      string
 	Number      int
 	City        string
@@ -41,24 +35,24 @@ type User_details struct {
 	Province    string
 }
 
-type Orders struct {
+type Order struct {
 	ID     int
 	UserID int
-	User   Users
+	User   User
 	Total  int
 }
 
 type Order_details struct {
 	ID        int
 	OrderID   int
-	Order     Orders
+	Order     Order
 	ProductID int
-	Product   Products
+	Product   Product
 	Quantity  int
 }
 
 type Payments struct {
 	gorm.Model
 	OrderID int
-	Order   Orders
+	Order   Order
 }
