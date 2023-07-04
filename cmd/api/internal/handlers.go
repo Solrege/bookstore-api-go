@@ -130,16 +130,25 @@ func (h *Handlers) LoginHandler(c *gin.Context) {
 func (h *Handlers) GetBookByIDHandler(c *gin.Context) {
 	ID := c.Param("ID")
 
+	id, err := strconv.Atoi(ID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Something went wrong with the ID",
+		})
+
+		return
+	}
+
 	var book business.Product
 
 	db := platform.DbConnection()
 
-	result := db.Where("ID = ?", ID).Find(&book)
-
+	result := db.Where("ID = ?", id).Find(&book)
 	if result.Error != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Something went wrong with the ID",
 		})
+
 		return
 	}
 
@@ -149,6 +158,7 @@ func (h *Handlers) GetBookByIDHandler(c *gin.Context) {
 func (h *Handlers) GetBooksByCategoryHandler(c *gin.Context) {
 	category := c.Param("category")
 	sortBy := c.Query("sort")
+	sortDirection := c.Query("dir")
 	pageStr := c.DefaultQuery("page", "1")
 	limitStr := c.DefaultQuery("limit", "20")
 	book := []business.Product{}
@@ -157,21 +167,35 @@ func (h *Handlers) GetBooksByCategoryHandler(c *gin.Context) {
 	result := db.Where("category = ?", category).Find(&book)
 
 	//sort by author o title
-	if sortBy == "author" {
-		result = result.Order("author ASC")
-	} else if sortBy == "title" {
-		result = result.Order("title ASC")
+	order := "ASC"
+	if sortDirection == "1" {
+		order = "DESC"
+	}
+
+	switch sortBy {
+	case "title":
+		result = result.Order("title " + order)
+	default:
+		result = result.Order("author " + order)
 	}
 
 	//pagination
 	page, err := strconv.Atoi(pageStr)
 	if err != nil {
-		panic(err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Something went wrong",
+		})
+
+		return
 	}
 
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil {
-		panic(err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Something went wrong",
+		})
+
+		return
 	}
 
 	offset := (page - 1) * limit
@@ -181,6 +205,7 @@ func (h *Handlers) GetBooksByCategoryHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Something went wrong",
 		})
+
 		return
 	}
 
@@ -192,12 +217,13 @@ func (h *Handlers) GetBooksByAuthorHandler(c *gin.Context) {
 	book := []business.Product{}
 
 	db := platform.DbConnection()
-	result := db.Where("author = ?", author).Order("title ASC").Find(&book)
 
+	result := db.Where("author = ?", author).Order("title ASC").Find(&book)
 	if result.Error != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "There is not book for the Author",
 		})
+
 		return
 	}
 
@@ -229,10 +255,20 @@ func (h *Handlers) AddNewBookHandler(c *gin.Context) {
 
 func (h *Handlers) DeleteBookHandler(c *gin.Context) {
 	ID := c.Param("ID")
+
+	id, err := strconv.Atoi(ID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Something went wrong with the ID",
+		})
+
+		return
+	}
+
 	var book business.Product
 
 	db := platform.DbConnection()
-	delete := db.Where("ID = ?", ID).Delete(&book)
+	delete := db.Where("ID = ?", id).Delete(&book)
 
 	if delete.Error != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -246,16 +282,27 @@ func (h *Handlers) DeleteBookHandler(c *gin.Context) {
 
 func (h *Handlers) UpdateBookHandler(c *gin.Context) {
 	ID := c.Param("ID")
+
+	id, err := strconv.Atoi(ID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Something went wrong with the ID",
+		})
+
+		return
+	}
+
 	var book business.Product
 
 	db := platform.DbConnection()
 
 	// primero se busca el libro
-	result := db.Find(&book, ID)
+	result := db.Find(&book, id)
 	if result.Error != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Book not found",
 		})
+
 		return
 	}
 
@@ -264,8 +311,10 @@ func (h *Handlers) UpdateBookHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
 		})
+
 		return
 	}
+
 	// se actualiza
 	update := db.Model(&book).Updates(book)
 
@@ -273,6 +322,25 @@ func (h *Handlers) UpdateBookHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Book not updated",
 		})
+
+		return
+	}
+
+	c.JSON(http.StatusOK, book)
+}
+
+func (h *Handlers) SearchBookHandler(c *gin.Context) {
+	query := c.Query("query")
+	var book []business.Product
+
+	db := platform.DbConnection()
+
+	result := db.Where("title LIKE ? OR author LIKE ?", "%"+query+"%", "%"+query+"%").Find(&book)
+	if result.Error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Book or Author not found",
+		})
+
 		return
 	}
 
