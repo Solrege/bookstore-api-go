@@ -4,10 +4,10 @@ import "gorm.io/gorm"
 
 type Product struct {
 	ID          int
-	Title       string
-	Author      string
-	Category    string
-	Price       float64
+	Title       string  `gorm:"size:255;not null"`
+	Author      string  `gorm:"size:255;not null"`
+	Category    string  `gorm:"size:255;not null"`
+	Price       float64 `gorm:"not null"`
 	Description string
 	Language    string
 	Cover       string
@@ -18,21 +18,21 @@ type Product struct {
 
 type User struct {
 	ID        int
-	Email     string `json:"-"`
-	Password  string `json:"-"`
-	Name      string
-	Last_name string
+	Email     string `gorm:"size:30;not null;unique" json:"-" binding:"required"`
+	Password  string `gorm:"size:255;not null;unique" json:"-" binding:"required"`
+	Name      string `gorm:"size:30;not null;unique"`
+	Last_name string `gorm:"size:30;not null;unique"`
 }
 
 type User_address struct {
 	ID          int
 	UserID      int
 	User        User
-	Street      string
-	Number      int
-	City        string
-	Postal_code int
-	Province    string
+	Street      string `gorm:"size:50;not null"`
+	Number      int    `gorm:"not null"`
+	City        string `gorm:"not null"`
+	Postal_code int    `gorm:"not null"`
+	Province    string `gorm:"not null"`
 }
 
 type Order struct {

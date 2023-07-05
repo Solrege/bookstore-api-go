@@ -8,9 +8,8 @@ func InitRoutes(r *gin.Engine) {
 	//rutas públicas
 
 	r.GET("/", h.Index)
-	r.POST("/register", h.RegisterHandler) // falta
-	r.POST("/login", h.LoginHandler)       // falta
-
+	r.POST("/register", h.RegisterHandler)
+	r.POST("/login", h.LoginHandler)
 	g := r.Group("/books")
 	{
 		g.GET("/:ID", h.GetBookByIDHandler)
@@ -21,7 +20,7 @@ func InitRoutes(r *gin.Engine) {
 
 	// rutas privadas de admin
 
-	a := r.Group("/admin")
+	a := r.Group("/admin", JwtAuthMiddleware(), AdminAuthMiddleware())
 	{
 		a.POST("/books", h.AddNewBookHandler)
 		a.DELETE("/books/:ID", h.DeleteBookHandler)
@@ -31,8 +30,9 @@ func InitRoutes(r *gin.Engine) {
 	}
 
 	// rutas privadas de user
-	//u := r.Group("/user")
+	u := r.Group("/user", JwtAuthMiddleware())
 	{
+		u.POST("/address", h.AddAddressHandler)
 		// agregar al carrito
 		// hacer compra
 		// completar datos de direccion y pago?

@@ -7,5 +7,5 @@ import (
 
 func main() {
 	db := platform.DbConnection()
-	db.Migrator().CreateTable(&business.Product{}, &business.User{}, &business.User_address{}, &business.Order{}, &business.Order_details{}, &business.Payments{})
+	db.Migrator().CreateTable(&business.Product{}, &business.User{}, &business.User_address{})
 }

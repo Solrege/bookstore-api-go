@@ -232,6 +232,41 @@ func (h *Handlers) GetBooksByAuthorHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, book)
 }
 
+func (h *Handlers) SearchBookHandler(c *gin.Context) {
+	originalQuery := c.Query("query")
+
+	//quitar espacios
+	query := strings.TrimSpace(originalQuery)
+
+	// longitud
+	q := len(query)
+	if q == 0 || q > 50 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid query",
+		})
+	}
+
+	// evitar caract especiales
+	reg := regexp.MustCompile("[^a-zA-Z0-9 ]+")
+
+	cleanQuery := reg.ReplaceAllString(query, "")
+
+	var book []business.Product
+
+	db := platform.DbConnection()
+
+	result := db.Where("title LIKE ? OR author LIKE ?", "%"+cleanQuery+"%", "%"+cleanQuery+"%").Find(&book)
+	if result.Error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Book or Author not found",
+		})
+
+		return
+	}
+
+	c.JSON(http.StatusOK, book)
+}
+
 func (h *Handlers) AddNewBookHandler(c *gin.Context) {
 	var book business.Product
 
@@ -331,37 +366,25 @@ func (h *Handlers) UpdateBookHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, book)
 }
 
-func (h *Handlers) SearchBookHandler(c *gin.Context) {
-	originalQuery := c.Query("query")
+func (h *Handlers) AddAddressHandler(c *gin.Context) {
+	var userAddress business.User_address
 
-	//quitar espacios
-	query := strings.TrimSpace(originalQuery)
-
-	// longitud
-	q := len(query)
-	if q == 0 || q > 50 {
+	if err := c.ShouldBindJSON(&userAddress); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid query",
+			"error": err.Error(),
 		})
-	}
-
-	// evitar caract especiales
-	reg := regexp.MustCompile("[^a-zA-Z0-9 ]+")
-
-	cleanQuery := reg.ReplaceAllString(query, "")
-
-	var book []business.Product
-
-	db := platform.DbConnection()
-
-	result := db.Where("title LIKE ? OR author LIKE ?", "%"+cleanQuery+"%", "%"+cleanQuery+"%").Find(&book)
-	if result.Error != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Book or Author not found",
-		})
-
 		return
 	}
 
-	c.JSON(http.StatusOK, book)
+	db := platform.DbConnection()
+	result := db.Create(&userAddress)
+
+	if result.Error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "User address not created",
+		})
+		return
+	}
+
+	c.JSON(http.StatusCreated, userAddress)
 }

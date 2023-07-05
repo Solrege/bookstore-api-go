@@ -18,3 +18,16 @@ func JwtAuthMiddleware() gin.HandlerFunc {
 		c.Next()
 	}
 }
+
+func AdminAuthMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userRole := c.GetHeader("X-User-Role")
+		if userRole != "admin" {
+			c.String(http.StatusUnauthorized, "Unauthorized, not an admin")
+			c.Abort()
+			return
+		}
+
+		c.Next()
+	}
+}
