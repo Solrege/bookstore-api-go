@@ -40,6 +40,7 @@ func AdminAuthMiddleware() gin.HandlerFunc {
 		if user.Role != "admin" {
 			c.String(http.StatusUnauthorized, "Unauthorized, not an admin")
 			c.Abort()
+
 			return
 		}
 

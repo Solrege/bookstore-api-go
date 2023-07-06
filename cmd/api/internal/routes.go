@@ -32,9 +32,15 @@ func InitRoutes(r *gin.Engine) {
 	// rutas privadas de user
 	u := r.Group("/user", JwtAuthMiddleware())
 	{
+		u.GET("/address", h.GetAddressHandler)
 		u.POST("/address", h.AddAddressHandler)
+		u.PATCH("/address", h.UpdateAddressHandler)
+		// ver sus datos
+		// modificar sus datos
 		// agregar al carrito
-		// hacer compra
-		// completar datos de direccion y pago?
+		// confirmar compra
+		// ir a mercado pago
+		// ver su compra
+
 	}
 }

@@ -366,6 +366,28 @@ func (h *Handlers) UpdateBookHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, book)
 }
 
+func (h *Handlers) GetAddressHandler(c *gin.Context) {
+	var userAddress business.User_address
+
+	user_id, _ := c.Get("user_id")
+	userId := user_id.(float64)
+	userAddress.UserID = int(userId)
+
+	db := platform.DbConnection()
+
+	result := db.Find(&userAddress)
+	if result.Error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "User address not found",
+		})
+
+		return
+	}
+
+	c.JSON(http.StatusOK, userAddress)
+
+}
+
 func (h *Handlers) AddAddressHandler(c *gin.Context) {
 	var userAddress business.User_address
 
@@ -373,8 +395,13 @@ func (h *Handlers) AddAddressHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
 		})
+
 		return
 	}
+
+	user_id, _ := c.Get("user_id")
+	userId := user_id.(float64)
+	userAddress.UserID = int(userId)
 
 	db := platform.DbConnection()
 	result := db.Create(&userAddress)
@@ -383,8 +410,48 @@ func (h *Handlers) AddAddressHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "User address not created",
 		})
+
 		return
 	}
 
 	c.JSON(http.StatusCreated, userAddress)
+}
+
+func (h *Handlers) UpdateAddressHandler(c *gin.Context) {
+	var userAddress business.User_address
+
+	user_id, _ := c.Get("user_id")
+	userId := user_id.(float64)
+	userAddress.UserID = int(userId)
+
+	db := platform.DbConnection()
+
+	result := db.Find(&userAddress)
+	if result.Error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Address not found",
+		})
+
+		return
+	}
+
+	if err := c.ShouldBindJSON(&userAddress); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+
+	update := db.Model(&userAddress).Updates(&userAddress)
+
+	if update.Error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Book not updated",
+		})
+
+		return
+	}
+
+	c.JSON(http.StatusOK, userAddress)
 }

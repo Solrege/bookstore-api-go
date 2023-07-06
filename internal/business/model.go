@@ -26,9 +26,9 @@ type User struct {
 }
 
 type User_address struct {
-	ID          int
-	UserID      int
-	User        User
+	ID     int
+	UserID int
+	//User        User
 	Street      string `gorm:"size:50;not null"`
 	Number      int    `gorm:"not null"`
 	City        string `gorm:"not null"`
