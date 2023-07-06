@@ -39,12 +39,19 @@ func TokenValid(c *gin.Context) error {
 	}
 
 	user_id, ok := (claims["user_id"]).(float64)
-
 	if !ok {
 		return errors.New("user Id not exists")
 	}
 
 	c.Set("user_id", user_id)
+
+	/*role, ok := (claims["role"])
+	if !ok {
+		return errors.New("role is not defined")
+	}
+
+	c.Set("role", role)*/
+
 	return nil
 }
 
@@ -53,7 +60,9 @@ func ExtractToken(c *gin.Context) string {
 	bearerToken := c.Request.Header.Get("Authorization")
 	bToken := strings.Split(bearerToken, " ")
 	if len(bToken) == 2 {
+
 		return bToken[1]
 	}
+
 	return ""
 }

@@ -20,8 +20,9 @@ type User struct {
 	ID        int
 	Email     string `gorm:"size:30;not null;unique" json:"-" binding:"required"`
 	Password  string `gorm:"size:255;not null;unique" json:"-" binding:"required"`
-	Name      string `gorm:"size:30;not null;unique"`
-	Last_name string `gorm:"size:30;not null;unique"`
+	Name      string `gorm:"size:30;not null"`
+	Last_name string `gorm:"size:30;not null"`
+	Role      string
 }
 
 type User_address struct {
