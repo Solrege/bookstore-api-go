@@ -37,23 +37,18 @@ type User_address struct {
 }
 
 type Order struct {
-	ID     int
-	UserID int
-	User   User
-	Total  int
+	ID            int
+	UserID        int
+	Order_details []Order_details
+	Total         float64
+	gorm.Model
 }
 
 type Order_details struct {
 	ID        int
 	OrderID   int
-	Order     Order
 	ProductID int
 	Product   Product
 	Quantity  int
-}
-
-type Payments struct {
-	gorm.Model
-	OrderID int
-	Order   Order
+	Total     float64
 }

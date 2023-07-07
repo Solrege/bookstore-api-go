@@ -35,12 +35,24 @@ func InitRoutes(r *gin.Engine) {
 		u.GET("/address", h.GetAddressHandler)
 		u.POST("/address", h.AddAddressHandler)
 		u.PATCH("/address", h.UpdateAddressHandler)
-		// ver sus datos
-		// modificar sus datos
+
 		// agregar al carrito
 		// confirmar compra
+		u.POST("/order")
+
 		// ir a mercado pago
-		// ver su compra
+		// ver historial de compra
+
+	}
+
+	o := r.Group("/order", JwtAuthMiddleware())
+	{
+		// agregar al carrito
+		// confirmar compra
+		o.POST("/", h.CreateOrderHandler)
+
+		// ir a mercado pago
+		// ver historial de compra
 
 	}
 }

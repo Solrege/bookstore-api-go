@@ -2,6 +2,7 @@ package internal
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -24,19 +25,26 @@ func GenerateToken(user_id int) (string, error) {
 	claims["exp"] = time.Now().Add(time.Hour * time.Duration(token_lifespan)).Unix()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	return (token.SignedString([]byte(os.Getenv("TOKEN_KEY"))))
+	key := []byte(os.Getenv("TOKEN_KEY"))
+
+	fmt.Printf("signing key: %s", key)
+
+	return token.SignedString(key)
 }
 
 func TokenValid(c *gin.Context) error {
 	tokenString := ExtractToken(c)
+	key := []byte(os.Getenv("TOKEN_KEY"))
+
 	claims := jwt.MapClaims{}
 	_, err := jwt.ParseWithClaims(tokenString, &claims, func(token *jwt.Token) (interface{}, error) {
-		return []byte(os.Getenv("TOKEN_KEY")), nil
+		return key, nil
 	})
-
 	if err != nil {
 		return err
 	}
+
+	fmt.Printf("key: %s\n", key)
 
 	user_id, ok := (claims["user_id"]).(float64)
 	if !ok {
@@ -56,11 +64,9 @@ func TokenValid(c *gin.Context) error {
 }
 
 func ExtractToken(c *gin.Context) string {
-
 	bearerToken := c.Request.Header.Get("Authorization")
 	bToken := strings.Split(bearerToken, " ")
 	if len(bToken) == 2 {
-
 		return bToken[1]
 	}
 

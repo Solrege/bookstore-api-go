@@ -3,6 +3,7 @@ package internal
 import (
 	"bookstore-api/internal/business"
 	"bookstore-api/internal/platform"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -13,6 +14,7 @@ func JwtAuthMiddleware() gin.HandlerFunc {
 		err := TokenValid(c)
 		if err != nil {
 			c.String(http.StatusUnauthorized, "Unauthorized, token not valid")
+			fmt.Println(err.Error())
 			c.Abort()
 			return
 		}

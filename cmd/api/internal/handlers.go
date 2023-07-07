@@ -36,6 +36,15 @@ type loginRequest struct {
 	Password string
 }
 
+type createOrderRequest struct {
+	Order_details []orderDetailRequest
+}
+
+type orderDetailRequest struct {
+	ProductID int
+	Quantity  int
+}
+
 func HashPassword(password string) (string, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 
@@ -86,7 +95,7 @@ func (h *Handlers) RegisterHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, user)
+	c.JSON(http.StatusCreated, user.Email)
 }
 
 func verifyPassword(hashPassword, password string) error {
@@ -116,7 +125,6 @@ func (h *Handlers) LoginHandler(c *gin.Context) {
 	fmt.Printf("%v", user)
 
 	err := verifyPassword(user.Password, input.Password)
-
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Something went wrong with the password",
@@ -124,9 +132,15 @@ func (h *Handlers) LoginHandler(c *gin.Context) {
 		return
 	}
 
-	fmt.Println(GenerateToken(user.ID))
+	resp, err := GenerateToken(user.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Something went wrong with the token: " + err.Error(),
+		})
+		return
+	}
 
-	c.JSON(http.StatusOK, input)
+	c.JSON(http.StatusOK, resp)
 }
 
 func (h *Handlers) GetBookByIDHandler(c *gin.Context) {
@@ -385,7 +399,6 @@ func (h *Handlers) GetAddressHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, userAddress)
-
 }
 
 func (h *Handlers) AddAddressHandler(c *gin.Context) {
@@ -454,4 +467,60 @@ func (h *Handlers) UpdateAddressHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, userAddress)
+}
+
+func (h *Handlers) CreateOrderHandler(c *gin.Context) {
+	var product business.Product
+	var preOrder createOrderRequest
+
+	if err := c.ShouldBindJSON(&preOrder); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+
+	db := platform.DbConnection()
+
+	user_id, _ := c.Get("user_id")
+	userId := user_id.(float64)
+
+	order := business.Order{
+		UserID: int(userId),
+		Total:  0,
+	}
+
+	items := make([]business.Order_details, 0)
+	for _, v := range preOrder.Order_details {
+
+		product.ID = v.ProductID
+		result := db.Where("ID = ?", v.ProductID).Find(&product)
+		if result.Error != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Something went wrong with the search",
+			})
+
+			return
+		}
+
+		precio := product.Price
+		subtotal := precio * float64(v.Quantity)
+
+		item := business.Order_details{
+			ProductID: v.ProductID,
+			Quantity:  v.Quantity,
+			Total:     subtotal,
+		}
+
+		order.Total += subtotal
+
+		items = append(items, item)
+	}
+
+	order.Order_details = items
+
+	db.Create(&order)
+
+	c.JSON(http.StatusCreated, order)
 }
