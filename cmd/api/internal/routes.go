@@ -10,6 +10,7 @@ func InitRoutes(r *gin.Engine) {
 	r.GET("/", h.Index)
 	r.POST("/register", h.RegisterHandler)
 	r.POST("/login", h.LoginHandler)
+
 	g := r.Group("/books")
 	{
 		g.GET("/:ID", h.GetBookByIDHandler)
@@ -19,7 +20,6 @@ func InitRoutes(r *gin.Engine) {
 	}
 
 	// rutas privadas de admin
-
 	a := r.Group("/admin", JwtAuthMiddleware(), AdminAuthMiddleware())
 	{
 		a.POST("/books", h.AddNewBookHandler)
@@ -36,10 +36,6 @@ func InitRoutes(r *gin.Engine) {
 		u.POST("/address", h.AddAddressHandler)
 		u.PATCH("/address", h.UpdateAddressHandler)
 
-		// agregar al carrito
-		// confirmar compra
-		u.POST("/order")
-
 		// ir a mercado pago
 		// ver historial de compra
 
@@ -47,12 +43,13 @@ func InitRoutes(r *gin.Engine) {
 
 	o := r.Group("/order", JwtAuthMiddleware())
 	{
-		// agregar al carrito
-		// confirmar compra
+		o.GET("/", h.GetOrdersHandler)
 		o.POST("/", h.CreateOrderHandler)
 
-		// ir a mercado pago
-		// ver historial de compra
+	}
 
+	p := r.Group("payment")
+	{
+		p.POST("/:ID", h.CreatePayment)
 	}
 }

@@ -53,13 +53,6 @@ func TokenValid(c *gin.Context) error {
 
 	c.Set("user_id", user_id)
 
-	/*role, ok := (claims["role"])
-	if !ok {
-		return errors.New("role is not defined")
-	}
-
-	c.Set("role", role)*/
-
 	return nil
 }
 

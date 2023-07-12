@@ -469,6 +469,27 @@ func (h *Handlers) UpdateAddressHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, userAddress)
 }
 
+func (h *Handlers) GetOrdersHandler(c *gin.Context) {
+	var order business.Order
+
+	user_id, _ := c.Get("user_id")
+	userId := user_id.(float64)
+	order.UserID = int(userId)
+
+	db := platform.DbConnection()
+
+	result := db.Find(&order)
+	if result.Error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "User order not found",
+		})
+
+		return
+	}
+
+	c.JSON(http.StatusOK, order)
+}
+
 func (h *Handlers) CreateOrderHandler(c *gin.Context) {
 	var product business.Product
 	var preOrder createOrderRequest
@@ -482,6 +503,12 @@ func (h *Handlers) CreateOrderHandler(c *gin.Context) {
 	}
 
 	db := platform.DbConnection()
+	tx := db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
 
 	user_id, _ := c.Get("user_id")
 	userId := user_id.(float64)
@@ -494,7 +521,6 @@ func (h *Handlers) CreateOrderHandler(c *gin.Context) {
 	items := make([]business.Order_details, 0)
 	for _, v := range preOrder.Order_details {
 
-		product.ID = v.ProductID
 		result := db.Where("ID = ?", v.ProductID).Find(&product)
 		if result.Error != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
@@ -521,6 +547,7 @@ func (h *Handlers) CreateOrderHandler(c *gin.Context) {
 	order.Order_details = items
 
 	db.Create(&order)
+	tx.Commit()
 
 	c.JSON(http.StatusCreated, order)
 }
