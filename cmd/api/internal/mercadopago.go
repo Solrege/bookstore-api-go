@@ -3,7 +3,6 @@ package internal
 import (
 	"bookstore-api/internal/business"
 	"bookstore-api/internal/platform"
-	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -59,6 +58,49 @@ func (h *Handlers) CreatePayment(c *gin.Context) {
 		NotificationURL:  "",
 	}, mptoken)
 
+	if err != nil || mercadopagoErr != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	resp := business.Payment{
+		PaymentID: response.ID,
+		OrderID:   id,
+		UserID:    order.UserID,
+		Total:     response.Items[0].UnitPrice,
+	}
+
+	db.Create(&resp)
+	c.JSON(http.StatusCreated, resp)
+}
+
+func (h *Handlers) GetPayment(c *gin.Context) {
+	var payment business.Payment
+
+	ID := c.Param("ID")
+	id, err := strconv.Atoi(ID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	db := platform.DbConnection()
+	result := db.Where("Order_id = ?", id).Find(&payment)
+	if result.Error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	mptoken := os.Getenv("MERCADO_PAGO_ACCESS_TOKEN")
+	idPayment := payment.PaymentID
+
+	response, mercadopagoErr, err := mercadopago.GetPayment(idPayment, mptoken)
 	switch {
 	case err != nil:
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -68,8 +110,7 @@ func (h *Handlers) CreatePayment(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Something went wrong with the connection to mercadopago",
 		})
-		log.Fatal(mercadopagoErr)
 	default:
-		c.JSON(http.StatusCreated, response)
+		c.JSON(http.StatusOK, response)
 	}
 }

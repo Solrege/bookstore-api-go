@@ -46,6 +46,7 @@ func InitRoutes(r *gin.Engine) {
 
 	p := r.Group("payment")
 	{
-		p.POST("/:ID", h.CreatePayment)
+		p.POST("/:ID", h.CreatePayment) //el ID es el de la orden
+		p.GET("/:ID", h.GetPayment)
 	}
 }

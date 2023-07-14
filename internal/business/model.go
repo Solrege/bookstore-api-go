@@ -53,3 +53,10 @@ type Order_details struct {
 	Quantity  int
 	Total     float64
 }
+
+type Payment struct {
+	PaymentID string
+	OrderID   int
+	UserID    int
+	Total     float64
+}
