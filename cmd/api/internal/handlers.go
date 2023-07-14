@@ -478,7 +478,7 @@ func (h *Handlers) GetOrdersHandler(c *gin.Context) {
 
 	db := platform.DbConnection()
 
-	result := db.Find(&order)
+	result := db.Preload("Order_details").Find(&order)
 	if result.Error != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "User order not found",

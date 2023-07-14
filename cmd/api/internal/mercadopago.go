@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/eduardo-mior/mercadopago-sdk-go"
 	"github.com/gin-gonic/gin"
@@ -14,7 +15,6 @@ import (
 
 func (h *Handlers) CreatePayment(c *gin.Context) {
 	ID := c.Param("ID")
-
 	id, err := strconv.Atoi(ID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -25,20 +25,20 @@ func (h *Handlers) CreatePayment(c *gin.Context) {
 	}
 
 	var order business.Order
-	db := platform.DbConnection()
 
+	db := platform.DbConnection()
 	result := db.Where("ID = ?", id).Preload("User").Find(&order)
 	if result.Error != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Something went wrong, item not found",
+			"error": "Something went wrong, order not found",
 		})
 
 		return
 	}
 
 	idUser := strconv.Itoa(order.UserID)
-
 	mptoken := os.Getenv("MERCADO_PAGO_ACCESS_TOKEN")
+	expirationDate := time.Now().Add(time.Hour * 3)
 
 	response, mercadopagoErr, err := mercadopago.CreatePayment(mercadopago.PaymentRequest{
 		ExternalReference: ID,
@@ -55,6 +55,8 @@ func (h *Handlers) CreatePayment(c *gin.Context) {
 			Surname: order.User.Last_name,
 			Email:   order.User.Email,
 		},
+		DateOfExpiration: &expirationDate,
+		NotificationURL:  "",
 	}, mptoken)
 
 	switch {
@@ -68,6 +70,6 @@ func (h *Handlers) CreatePayment(c *gin.Context) {
 		})
 		log.Fatal(mercadopagoErr)
 	default:
-		c.JSON(http.StatusOK, response)
+		c.JSON(http.StatusCreated, response)
 	}
 }

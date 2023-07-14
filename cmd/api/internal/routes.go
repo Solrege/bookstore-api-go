@@ -25,7 +25,6 @@ func InitRoutes(r *gin.Engine) {
 		a.POST("/books", h.AddNewBookHandler)
 		a.DELETE("/books/:ID", h.DeleteBookHandler)
 		a.PATCH("/books/:ID", h.UpdateBookHandler)
-		// cancelar una orden
 
 	}
 
@@ -35,9 +34,6 @@ func InitRoutes(r *gin.Engine) {
 		u.GET("/address", h.GetAddressHandler)
 		u.POST("/address", h.AddAddressHandler)
 		u.PATCH("/address", h.UpdateAddressHandler)
-
-		// ir a mercado pago
-		// ver historial de compra
 
 	}
 
