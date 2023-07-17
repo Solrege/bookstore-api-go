@@ -1,12 +1,14 @@
 package internal
 
 import (
-	"bookstore-api/internal/business"
-	"bookstore-api/internal/platform"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
 	"time"
+
+	"bookstore-api/internal/business"
+	"bookstore-api/internal/platform"
 
 	"github.com/eduardo-mior/mercadopago-sdk-go"
 	"github.com/gin-gonic/gin"
@@ -55,7 +57,7 @@ func (h *Handlers) CreatePayment(c *gin.Context) {
 			Email:   order.User.Email,
 		},
 		DateOfExpiration: &expirationDate,
-		NotificationURL:  "",
+		NotificationURL:  "https://patita.knf.com.ar/mercadopago/payment",
 	}, mptoken)
 
 	if err != nil || mercadopagoErr != nil {
@@ -65,15 +67,16 @@ func (h *Handlers) CreatePayment(c *gin.Context) {
 		return
 	}
 
-	resp := business.Payment{
-		PaymentID: response.ID,
-		OrderID:   id,
-		UserID:    order.UserID,
-		Total:     response.Items[0].UnitPrice,
+	payment := business.Payment{
+		ExternalPaymentID: response.ID,
+		UserID:            order.UserID,
+		OrderID:           int(order.ID),
+		Total:             response.Items[0].UnitPrice,
 	}
+	order.Payment = payment
 
-	db.Create(&resp)
-	c.JSON(http.StatusCreated, resp)
+	db.Create(&payment)
+	c.JSON(http.StatusCreated, payment)
 }
 
 func (h *Handlers) GetPayment(c *gin.Context) {
@@ -98,7 +101,7 @@ func (h *Handlers) GetPayment(c *gin.Context) {
 	}
 
 	mptoken := os.Getenv("MERCADO_PAGO_ACCESS_TOKEN")
-	idPayment := payment.PaymentID
+	idPayment := payment.ExternalPaymentID
 
 	response, mercadopagoErr, err := mercadopago.GetPayment(idPayment, mptoken)
 	switch {
@@ -113,4 +116,49 @@ func (h *Handlers) GetPayment(c *gin.Context) {
 	default:
 		c.JSON(http.StatusOK, response)
 	}
+}
+
+type mpReq struct {
+	Action       string
+	Api_version  string
+	Data         data
+	Date_created string
+	Id           string
+	Live_mode    string
+	User_id      string
+}
+
+type data struct {
+	Id string
+}
+
+func (h *Handlers) WebhookPaymentHandler(c *gin.Context) {
+	var mpReq mpReq
+	err := c.ShouldBind(&mpReq)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	log.Printf("body mp: [%v]", mpReq)
+
+	mptoken := os.Getenv("MERCADO_PAGO_ACCESS_TOKEN")
+	paymentID := mpReq.Data.Id
+
+	response, mercadopagoErr, err := mercadopago.ConsultPayment(paymentID, mptoken)
+
+	if err != nil || mercadopagoErr != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	log.Printf("payment mp: [%v]", response)
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": "tu vieja en tanga",
+	})
 }

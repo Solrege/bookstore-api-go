@@ -37,12 +37,12 @@ type User_address struct {
 }
 
 type Order struct {
-	ID            int
+	gorm.Model
 	UserID        int
 	User          User
 	Order_details []Order_details
 	Total         float64
-	gorm.Model
+	Payment       Payment
 }
 
 type Order_details struct {
@@ -55,8 +55,9 @@ type Order_details struct {
 }
 
 type Payment struct {
-	PaymentID string
-	OrderID   int
-	UserID    int
-	Total     float64
+	gorm.Model
+	ExternalPaymentID string
+	OrderID           int
+	UserID            int
+	Total             float64
 }

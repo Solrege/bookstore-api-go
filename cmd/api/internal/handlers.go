@@ -470,15 +470,14 @@ func (h *Handlers) UpdateAddressHandler(c *gin.Context) {
 }
 
 func (h *Handlers) GetOrdersHandler(c *gin.Context) {
-	var order business.Order
+	var order []business.Order
 
 	user_id, _ := c.Get("user_id")
 	userId := user_id.(float64)
-	order.UserID = int(userId)
 
 	db := platform.DbConnection()
 
-	result := db.Preload("Order_details").Find(&order)
+	result := db.Where(business.Order{UserID: int(userId)}).Preload("Order_details").Preload("User").Preload("Payment").Limit(10).Find(&order)
 	if result.Error != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "User order not found",

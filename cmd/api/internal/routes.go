@@ -41,12 +41,12 @@ func InitRoutes(r *gin.Engine) {
 	{
 		o.GET("/", h.GetOrdersHandler)
 		o.POST("/", h.CreateOrderHandler)
-
+		o.GET("/:ID/payment", h.GetPayment)
+		o.POST("/:ID/payment", h.CreatePayment) //el ID es el de la orden
 	}
 
-	p := r.Group("payment")
+	m := r.Group("/mercadopago")
 	{
-		p.POST("/:ID", h.CreatePayment) //el ID es el de la orden
-		p.GET("/:ID", h.GetPayment)
+		m.POST("/payment", h.WebhookPaymentHandler)
 	}
 }
