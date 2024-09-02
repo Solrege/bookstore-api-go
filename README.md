@@ -3,7 +3,7 @@ Este proyecto es una API REST desarrollada en Golang que gestiona una tienda de 
 
 ## Tecnologías Utilizadas
 - Lenguaje: Go (Golang)
-- Framework: Echo para manejar las rutas HTTP
+- Framework: Gin
 - Base de Datos: MySQL (mediante el paquete gorm)
 - Autenticación: JWT (JSON Web Tokens) para la autenticación de usuarios
 - Pagos: Integración con la API de Mercado Pago
