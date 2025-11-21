@@ -1,9 +1,18 @@
 package internal
 
-import "github.com/gin-gonic/gin"
+import (
+	"bookstore-api/internal/platform"
+	"github.com/gin-gonic/gin"
+)
 
 func InitRoutes(r *gin.Engine) {
-	h := Handlers{}
+
+	db := platform.DbConnection()
+
+	h, err := NewHandlers(db, HashPassword, verifyPassword)
+	if err != nil {
+		panic(err)
+	}
 
 	//rutas públicas
 

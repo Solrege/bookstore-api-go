@@ -2,8 +2,9 @@ package internal
 
 import (
 	"bookstore-api/internal/business"
-	"bookstore-api/internal/platform"
+	"errors"
 	"fmt"
+	"gorm.io/gorm"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -14,13 +15,32 @@ import (
 )
 
 type Handlers struct {
+	db         *gorm.DB //TODO: Convertir a Interfaz
+	hasher     func(string) (string, error)
+	verifyPass func(string, string) error
+}
+
+func NewHandlers(
+	database *gorm.DB,
+	passwordHasher func(string) (string, error),
+	verifyPass func(string, string) error,
+) (*Handlers, error) {
+	if database == nil {
+
+		return nil, errors.New("please provide a database connection")
+	}
+
+	return &Handlers{
+		db:         database,
+		hasher:     passwordHasher,
+		verifyPass: verifyPass,
+	}, nil
 }
 
 func (h *Handlers) Index(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "holis",
 	})
-
 }
 
 type registerRequest struct {
@@ -62,22 +82,26 @@ func (h *Handlers) RegisterHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
 		})
+
 		return
 	}
 
-	db := platform.DbConnection()
-
 	if user.Password != user.Pass_confirmation {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "password_confirmation_failed",
+		})
+
 		return
 	}
 
 	var err error
-
-	user.Password, err = HashPassword(user.Password)
+	user.Password, err = h.hasher(user.Password)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Something went wrong with the hash",
 		})
+
+		return
 	}
 
 	mUser := business.User{
@@ -85,13 +109,15 @@ func (h *Handlers) RegisterHandler(c *gin.Context) {
 		Password:  user.Password,
 		Name:      user.Name,
 		Last_name: user.Last_name,
+		Role:      "user",
 	}
 
-	result := db.Create(&mUser)
+	result := h.db.Create(&mUser)
 	if result.Error != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Something went wrong",
 		})
+
 		return
 	}
 
@@ -110,25 +136,26 @@ func (h *Handlers) LoginHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
 		})
+
 		return
 	}
 
-	db := platform.DbConnection()
-
-	result := db.Model(user).Where("email = ?", input.Email).Take(&user)
+	result := h.db.Model(user).Where("email = ?", input.Email).Take(&user)
 	if result.Error != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Something went wrong with the Email",
 		})
+
 		return
 	}
 	fmt.Printf("%v", user)
 
-	err := verifyPassword(user.Password, input.Password)
+	err := h.verifyPass(user.Password, input.Password)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Something went wrong with the password",
 		})
+
 		return
 	}
 
@@ -137,6 +164,7 @@ func (h *Handlers) LoginHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Something went wrong with the token: " + err.Error(),
 		})
+
 		return
 	}
 
@@ -157,9 +185,7 @@ func (h *Handlers) GetBookByIDHandler(c *gin.Context) {
 
 	var book business.Product
 
-	db := platform.DbConnection()
-
-	result := db.Where("ID = ?", id).Find(&book)
+	result := h.db.Where("ID = ?", id).Find(&book)
 	if result.Error != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Something went wrong with the ID",
@@ -179,27 +205,10 @@ func (h *Handlers) GetBooksByCategoryHandler(c *gin.Context) {
 	limitStr := c.DefaultQuery("limit", "20")
 	book := []business.Product{}
 
-	db := platform.DbConnection()
-	result := db.Where("category = ?", category).Find(&book)
-
-	//sort by author o title
-	order := "ASC"
-	if sortDirection == "1" {
-		order = "DESC"
-	}
-
-	switch sortBy {
-	case "title":
-		result = result.Order("title " + order)
-	default:
-		result = result.Order("author " + order)
-	}
-
-	//pagination
 	page, err := strconv.Atoi(pageStr)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Something went wrong",
+			"error": "Something went wrong with the pagination",
 		})
 
 		return
@@ -213,13 +222,30 @@ func (h *Handlers) GetBooksByCategoryHandler(c *gin.Context) {
 
 		return
 	}
-
 	offset := (page - 1) * limit
-	result = result.Offset(offset).Limit(limit)
 
+	result := h.db.Where("category = ?", category)
+
+	//sort by author o title
+	order := "ASC"
+	if sortDirection == "1" {
+		order = "DESC"
+	}
+
+	switch sortBy {
+	case "title":
+		result.Order("title " + order)
+	default:
+		result.Order("author " + order)
+	}
+
+	//pagination
+	result.Offset(offset).Limit(limit)
+
+	result.Find(&book)
 	if result.Error != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Something went wrong",
+			"error": "Something went wrong while fetching the books",
 		})
 
 		return
@@ -232,9 +258,7 @@ func (h *Handlers) GetBooksByAuthorHandler(c *gin.Context) {
 	author := c.Param("author")
 	book := []business.Product{}
 
-	db := platform.DbConnection()
-
-	result := db.Where("author = ?", author).Order("title ASC").Find(&book)
+	result := h.db.Where("author = ?", author).Order("title ASC").Find(&book)
 	if result.Error != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "There is not book for the Author",
@@ -267,9 +291,7 @@ func (h *Handlers) SearchBookHandler(c *gin.Context) {
 
 	var book []business.Product
 
-	db := platform.DbConnection()
-
-	result := db.Where("title LIKE ? OR author LIKE ?", "%"+cleanQuery+"%", "%"+cleanQuery+"%").Find(&book)
+	result := h.db.Where("title LIKE ? OR author LIKE ?", "%"+cleanQuery+"%", "%"+cleanQuery+"%").Find(&book)
 	if result.Error != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Book or Author not found",
@@ -288,16 +310,17 @@ func (h *Handlers) AddNewBookHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
 		})
+
 		return
 	}
 
-	db := platform.DbConnection()
-	result := db.Create(&book)
+	result := h.db.Create(&book)
 
 	if result.Error != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Book not created",
 		})
+
 		return
 	}
 
@@ -318,13 +341,13 @@ func (h *Handlers) DeleteBookHandler(c *gin.Context) {
 
 	var book business.Product
 
-	db := platform.DbConnection()
-	delete := db.Where("ID = ?", id).Delete(&book)
+	delete := h.db.Where("ID = ?", id).Delete(&book)
 
 	if delete.Error != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Book not deleted",
 		})
+
 		return
 	}
 
@@ -345,10 +368,8 @@ func (h *Handlers) UpdateBookHandler(c *gin.Context) {
 
 	var book business.Product
 
-	db := platform.DbConnection()
-
 	// primero se busca el libro
-	result := db.Find(&book, id)
+	result := h.db.Find(&book, id)
 	if result.Error != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Book not found",
@@ -367,7 +388,7 @@ func (h *Handlers) UpdateBookHandler(c *gin.Context) {
 	}
 
 	// se actualiza
-	update := db.Model(&book).Updates(book)
+	update := h.db.Model(&book).Updates(book)
 
 	if update.Error != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -383,13 +404,25 @@ func (h *Handlers) UpdateBookHandler(c *gin.Context) {
 func (h *Handlers) GetAddressHandler(c *gin.Context) {
 	var userAddress business.User_address
 
-	user_id, _ := c.Get("user_id")
-	userId := user_id.(float64)
-	userAddress.UserID = int(userId)
+	user_id, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "User ID not found",
+		})
+		return
+	}
 
-	db := platform.DbConnection()
+	userId, ok := user_id.(float64)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid user ID",
+		})
+		return
+	}
 
-	result := db.Find(&userAddress)
+	//userAddress.UserID = int(userId)
+
+	result := h.db.Where("userID = ?", int(userId)).Find(&userAddress)
 	if result.Error != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "User address not found",
@@ -412,12 +445,25 @@ func (h *Handlers) AddAddressHandler(c *gin.Context) {
 		return
 	}
 
-	user_id, _ := c.Get("user_id")
-	userId := user_id.(float64)
-	userAddress.UserID = int(userId)
+	user_id, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "User ID not found",
+		})
+		return
+	}
 
-	db := platform.DbConnection()
-	result := db.Create(&userAddress)
+	userId, ok := user_id.(float64)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid user ID",
+		})
+		return
+	}
+
+	//userAddress.UserID = int(userId)
+
+	result := h.db.Where("userID = ?", int(userId)).Create(&userAddress)
 
 	if result.Error != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -433,13 +479,25 @@ func (h *Handlers) AddAddressHandler(c *gin.Context) {
 func (h *Handlers) UpdateAddressHandler(c *gin.Context) {
 	var userAddress business.User_address
 
-	user_id, _ := c.Get("user_id")
-	userId := user_id.(float64)
-	userAddress.UserID = int(userId)
+	user_id, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "User ID not found",
+		})
+		return
+	}
 
-	db := platform.DbConnection()
+	userId, ok := user_id.(float64)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid user ID",
+		})
+		return
+	}
 
-	result := db.Find(&userAddress)
+	//userAddress.UserID = int(userId)
+
+	result := h.db.Where("userID = ?", int(userId)).Find(&userAddress)
 	if result.Error != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Address not found",
@@ -456,7 +514,7 @@ func (h *Handlers) UpdateAddressHandler(c *gin.Context) {
 		return
 	}
 
-	update := db.Model(&userAddress).Updates(&userAddress)
+	update := h.db.Model(&userAddress).Updates(&userAddress)
 
 	if update.Error != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -472,12 +530,28 @@ func (h *Handlers) UpdateAddressHandler(c *gin.Context) {
 func (h *Handlers) GetOrdersHandler(c *gin.Context) {
 	var order []business.Order
 
-	user_id, _ := c.Get("user_id")
-	userId := user_id.(float64)
+	user_id, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "User ID not found",
+		})
+		return
+	}
 
-	db := platform.DbConnection()
+	userId, ok := user_id.(float64)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid user ID",
+		})
+		return
+	}
 
-	result := db.Where(business.Order{UserID: int(userId)}).Preload("Order_details").Preload("User").Preload("Payment").Limit(10).Find(&order)
+	result := h.db.Where(business.Order{UserID: int(userId)}).
+		Preload("Order_details").
+		Preload("User").
+		Preload("Payment").
+		Limit(10).
+		Find(&order)
 	if result.Error != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "User order not found",
@@ -501,8 +575,7 @@ func (h *Handlers) CreateOrderHandler(c *gin.Context) {
 		return
 	}
 
-	db := platform.DbConnection()
-	tx := db.Begin()
+	tx := h.db.Begin()
 	defer func() {
 		if r := recover(); r != nil {
 			tx.Rollback()
@@ -520,7 +593,7 @@ func (h *Handlers) CreateOrderHandler(c *gin.Context) {
 	items := make([]business.Order_details, 0)
 	for _, v := range preOrder.Order_details {
 
-		result := db.Where("ID = ?", v.ProductID).Find(&product)
+		result := h.db.Where("ID = ?", v.ProductID).Find(&product)
 		if result.Error != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": "Something went wrong with the search",
@@ -545,7 +618,7 @@ func (h *Handlers) CreateOrderHandler(c *gin.Context) {
 
 	order.Order_details = items
 
-	db.Create(&order)
+	h.db.Create(&order)
 	tx.Commit()
 
 	c.JSON(http.StatusCreated, order)

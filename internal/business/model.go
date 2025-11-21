@@ -38,7 +38,7 @@ type User_address struct {
 
 type Order struct {
 	gorm.Model
-	UserID        int
+	UserID        int `json:"UserID"`
 	User          User
 	Order_details []Order_details
 	Total         float64

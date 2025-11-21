@@ -11,7 +11,6 @@ import (
 )
 
 func DbConnection() *gorm.DB {
-
 	err := godotenv.Load(".env")
 
 	if err != nil {
@@ -34,5 +33,4 @@ func DbConnection() *gorm.DB {
 	fmt.Println("Connecting to a DB")
 
 	return db
-
 }
